@@ -109,7 +109,6 @@ const POSITIVE = [
   'award',
   'kindness',
   'kind',
-
   'donates',
   'donation',
   'raises',
@@ -121,7 +120,6 @@ const POSITIVE = [
   'returns',
   'rebounds',
   'revival',
-
   'protect',
   'protected',
   'conservation',
@@ -132,7 +130,6 @@ const POSITIVE = [
   'adoption',
   'celebrates',
   'celebration',
-
   'success',
   'successful',
   'improves',
@@ -143,7 +140,6 @@ const POSITIVE = [
   'recycle',
   'recycling',
   'hope',
-
   'helps',
   'helping',
   'friendship',
@@ -172,7 +168,6 @@ const QUIRKY = [
   'festival',
   'accidentally',
   'mistaken for',
-
   'wanders into',
   'escapes',
   'photobomb',
@@ -183,7 +178,6 @@ const QUIRKY = [
   'treasure',
   'message in a bottle',
   'surprise visitor',
-
   'unexpected guest',
   'wrong house',
   'goes viral',
@@ -318,10 +312,12 @@ function removeFeedJunk(text = '') {
 }
 
 function sentences(text = '') {
-  return removeFeedJunk(cleanHtml(text))
-    .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
-    ?.map(s => s.trim())
-    .filter(Boolean) || [];
+  return (
+    removeFeedJunk(cleanHtml(text))
+      .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
+      ?.map(s => s.trim())
+      .filter(Boolean) || []
+  );
 }
 
 function neatSummary(text = '', maxLength = 280) {
@@ -357,26 +353,19 @@ function neatSummary(text = '', maxLength = 280) {
     return first;
   }
 
-  const shortened =
-    first.slice(0, maxLength);
-
-  const lastSpace =
-    shortened.lastIndexOf(' ');
+  const shortened = first.slice(0, maxLength);
+  const lastSpace = shortened.lastIndexOf(' ');
 
   return (
     shortened.slice(
       0,
-      lastSpace > 80
-        ? lastSpace
-        : maxLength
+      lastSpace > 80 ? lastSpace : maxLength
     ) + '…'
   );
 }
 
 function buildParagraphs(summary, source) {
-  const parts = sentences(summary)
-    .slice(0, 3);
-
+  const parts = sentences(summary).slice(0, 3);
   const paragraphs = [];
 
   if (parts.length >= 1) {
@@ -384,9 +373,7 @@ function buildParagraphs(summary, source) {
   }
 
   if (parts.length >= 2) {
-    paragraphs.push(
-      parts.slice(1).join(' ')
-    );
+    paragraphs.push(parts.slice(1).join(' '));
   }
 
   paragraphs.push(
@@ -419,7 +406,6 @@ function mediaUrl(value) {
   if (Array.isArray(value)) {
     for (const item of value) {
       const result = mediaUrl(item);
-
       if (result) return result;
     }
 
@@ -449,10 +435,7 @@ function imageFromItem(item, baseUrl = '') {
   ].find(Boolean);
 
   if (direct) {
-    return absolutize(
-      direct,
-      baseUrl
-    );
+    return absolutize(direct, baseUrl);
   }
 
   const html =
@@ -469,8 +452,7 @@ function imageFromItem(item, baseUrl = '') {
   ];
 
   for (const pattern of patterns) {
-    const match =
-      String(html).match(pattern);
+    const match = String(html).match(pattern);
 
     if (match?.[1]) {
       return absolutize(
@@ -483,11 +465,75 @@ function imageFromItem(item, baseUrl = '') {
   return '';
 }
 
+async function fetchPageImage(article) {
+  if (article.image || !article.url) {
+    return article.image || '';
+  }
+
+  const controller = new AbortController();
+
+  const timer = setTimeout(
+    () => controller.abort(),
+    4500
+  );
+
+  try {
+    const response = await fetch(article.url, {
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 GoodNewsApp/4.0'
+      }
+    });
+
+    if (!response.ok) {
+      return '';
+    }
+
+    const html = (await response.text()).slice(
+      0,
+      500000
+    );
+
+    const patterns = [
+      /<meta[^>]+property=["']og:image:secure_url["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,
+      /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i,
+      /<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)["']/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = html.match(pattern);
+
+      if (match?.[1]) {
+        return absolutize(
+          match[1],
+          article.url
+        );
+      }
+    }
+
+    return '';
+
+  } catch (error) {
+    console.log(
+      `Image lookup failed: ${article.source}`
+    );
+
+    return '';
+
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function keywordHits(text, words) {
   return words.reduce(
     (count, word) =>
-      count +
-      (text.includes(word) ? 1 : 0),
+      count + (text.includes(word) ? 1 : 0),
     0
   );
 }
@@ -504,8 +550,7 @@ function chooseCategory(
       ])
       .sort((a, b) => b[1] - a[1]);
 
-  const [best, bestScore] =
-    scores[0] || [];
+  const [best, bestScore] = scores[0] || [];
 
   if (!bestScore) {
     return fallback;
@@ -551,34 +596,27 @@ function scoreArticle(article) {
     };
   }
 
-  const positiveHits =
-    keywordHits(
-      text,
-      POSITIVE
-    );
+  const positiveHits = keywordHits(
+    text,
+    POSITIVE
+  );
 
-  const quirkyHits =
-    keywordHits(
-      text,
-      QUIRKY
-    );
+  const quirkyHits = keywordHits(
+    text,
+    QUIRKY
+  );
 
   const sourceBonus =
-    article.trustedPositive
-      ? 3
-      : 0;
+    article.trustedPositive ? 3 : 0;
 
   const published =
-    new Date(
-      article.publishedAt
-    ).getTime();
+    new Date(article.publishedAt).getTime();
 
   const hoursOld =
     Number.isFinite(published)
       ? Math.max(
           0,
-          (Date.now() - published) /
-            3600000
+          (Date.now() - published) / 3600000
         )
       : 999;
 
@@ -591,19 +629,17 @@ function scoreArticle(article) {
       ? 1
       : 0;
 
-  const positivity =
-    Math.min(
-      10,
-      4 +
-        positiveHits * 1.35 +
-        sourceBonus
-    );
+  const positivity = Math.min(
+    10,
+    4 +
+      positiveHits * 1.35 +
+      sourceBonus
+  );
 
-  const quirkiness =
-    Math.min(
-      10,
-      quirkyHits * 2.2
-    );
+  const quirkiness = Math.min(
+    10,
+    quirkyHits * 2.2
+  );
 
   const approved =
     article.trustedPositive ||
@@ -625,21 +661,17 @@ function scoreArticle(article) {
 
 async function fetchSource(source) {
   try {
-    const feed =
-      await parser.parseURL(
-        source.url
-      );
+    const feed = await parser.parseURL(
+      source.url
+    );
 
-    return (
-      feed.items || []
-    )
+    return (feed.items || [])
       .slice(0, 25)
       .map((item, index) => {
-        const title =
-          cleanHtml(
-            item.title ||
-              'Untitled story'
-          );
+        const title = cleanHtml(
+          item.title ||
+            'Untitled story'
+        );
 
         const rawText =
           item.contentSnippet ||
@@ -649,11 +681,10 @@ async function fetchSource(source) {
           item['content:encoded'] ||
           '';
 
-        const summary =
-          neatSummary(
-            rawText,
-            300
-          );
+        const summary = neatSummary(
+          rawText,
+          300
+        );
 
         const publishedAt =
           item.isoDate ||
@@ -676,22 +707,18 @@ async function fetchSource(source) {
           title,
           summary,
 
-          source:
-            source.name,
+          source: source.name,
 
-          url:
-            link,
+          url: link,
 
-          image:
-            imageFromItem(
-              item,
-              link
-            ),
+          image: imageFromItem(
+            item,
+            link
+          ),
 
           publishedAt,
 
-          category:
-            source.hint,
+          category: source.hint,
 
           trustedPositive:
             !!source.trustedPositive
@@ -729,8 +756,7 @@ const FALLBACK = [
       'Try again shortly — your saved stories are still available.'
     ],
 
-    source:
-      'Good News',
+    source: 'Good News',
 
     url:
       'https://www.goodnewsnetwork.org/',
@@ -740,8 +766,7 @@ const FALLBACK = [
     publishedAt:
       new Date().toISOString(),
 
-    category:
-      'Community',
+    category: 'Community',
 
     positivity: 8,
     quirkiness: 2,
@@ -767,165 +792,147 @@ export default async function handler(
   );
 
   if (req.method === 'OPTIONS') {
-    return res
-      .status(204)
-      .end();
+    return res.status(204).end();
   }
 
   if (req.method !== 'GET') {
     return res
       .status(405)
       .json({
-        error:
-          'Method not allowed'
+        error: 'Method not allowed'
       });
   }
 
-  const batches =
-    await Promise.all(
-      SOURCES.map(
-        fetchSource
-      )
-    );
+  const batches = await Promise.all(
+    SOURCES.map(fetchSource)
+  );
 
-  const seen =
-    new Set();
+  const seen = new Set();
 
-  let articles =
-    batches
-      .flat()
-      .filter(article => {
-        if (!article.title) {
-          return false;
-        }
+  let articles = batches
+    .flat()
+    .filter(article => {
+      if (!article.title) {
+        return false;
+      }
 
-        const key =
-          String(article.url)
-            .replace(
-              /[#?].*$/,
-              ''
-            )
-            .replace(
-              /\/$/,
-              ''
-            );
+      const key = String(article.url)
+        .replace(/[#?].*$/, '')
+        .replace(/\/$/, '');
 
-        if (seen.has(key)) {
-          return false;
-        }
+      if (seen.has(key)) {
+        return false;
+      }
 
-        seen.add(key);
+      seen.add(key);
 
-        return true;
-      })
-      .map(article => {
-        const result =
-          scoreArticle(
-            article
-          );
-
-        const category =
-          chooseCategory(
-            `${article.title} ${article.summary}`
-              .toLowerCase(),
-            article.category
-          );
-
-        return {
-          ...article,
-          ...result,
-          category
-        };
-      })
-      .filter(
-        article =>
-          article.approved
-      )
-      .sort(
-        (a, b) =>
-          b.score -
-          a.score
-      )
-      .slice(
-        0,
-        20
+      return true;
+    })
+    .map(article => {
+      const result = scoreArticle(
+        article
       );
 
-  articles =
-    articles.map(
-      article => {
-        const cleanSummary =
-          neatSummary(
-            article.summary,
-            300
-          );
+      const category =
+        chooseCategory(
+          `${article.title} ${article.summary}`
+            .toLowerCase(),
+          article.category
+        );
 
-        const dek =
-          neatSummary(
-            cleanSummary,
-            180
-          );
+      return {
+        ...article,
+        ...result,
+        category
+      };
+    })
+    .filter(article => article.approved)
+    .sort(
+      (a, b) =>
+        b.score - a.score
+    )
+    .slice(0, 20);
 
-        return {
-          id:
-            article.id,
+  articles = await Promise.all(
+    articles.map(async article => {
+      const image =
+        article.image ||
+        (await fetchPageImage(article));
 
-          title:
-            article.title,
+      return {
+        ...article,
+        image
+      };
+    })
+  );
 
-          displayTitle:
-            article.title,
-
-          summary:
-            cleanSummary,
-
-          dek,
-
-          articleParagraphs:
-            buildParagraphs(
-              cleanSummary,
-              article.source
-            ),
-
-          source:
-            article.source,
-
-          url:
-            article.url,
-
-          image:
-            article.image,
-
-          publishedAt:
-            article.publishedAt,
-
-          category:
-            article.category,
-
-          positivity:
-            article.positivity,
-
-          quirkiness:
-            article.quirkiness,
-
-          score:
-            article.score,
-
-          digestMode:
-            'free RSS digest'
-        };
-      }
+  articles = articles.map(article => {
+    const cleanSummary = neatSummary(
+      article.summary,
+      300
     );
+
+    const dek = neatSummary(
+      cleanSummary,
+      180
+    );
+
+    return {
+      id: article.id,
+
+      title: article.title,
+
+      displayTitle:
+        article.title,
+
+      summary:
+        cleanSummary,
+
+      dek,
+
+      articleParagraphs:
+        buildParagraphs(
+          cleanSummary,
+          article.source
+        ),
+
+      source:
+        article.source,
+
+      url:
+        article.url,
+
+      image:
+        article.image,
+
+      publishedAt:
+        article.publishedAt,
+
+      category:
+        article.category,
+
+      positivity:
+        article.positivity,
+
+      quirkiness:
+        article.quirkiness,
+
+      score:
+        article.score,
+
+      digestMode:
+        'free RSS digest'
+    };
+  });
 
   return res
     .status(200)
     .json({
       updatedAt:
-        new Date()
-          .toISOString(),
+        new Date().toISOString(),
 
       filterMode:
-        'rules + free RSS digests',
+        'rules + free RSS digests + images',
 
       count:
         articles.length,
