@@ -1,0 +1,12 @@
+{
+  "name": "Good News",
+  "short_name": "Good News",
+  "description": "Positive, uplifting and quirky news without the doomscrolling.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fffaf0",
+  "theme_color": "#f4c542",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
